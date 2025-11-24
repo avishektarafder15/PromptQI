@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { HistoryItem } from '../types';
-import { X, Trash2, Clock, ChevronRight, Download, Upload } from 'lucide-react';
+import { X, Trash2, Clock, ChevronRight, Download, Upload, Cloud, HardDrive } from 'lucide-react';
 import { Button } from './Button';
-import { exportHistory, importHistory } from '../services/historyService';
+import { exportHistory, importHistory, getStorageType } from '../services/historyService';
 
 interface HistorySidebarProps {
   isOpen: boolean;
@@ -22,6 +22,8 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
   onImport
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isClearing, setIsClearing] = useState(false);
+  const storageType = getStorageType();
 
   if (!isOpen) return null;
 
@@ -34,10 +36,10 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       if (content) {
-        const success = importHistory(content);
+        const success = await importHistory(content);
         if (success) {
           onImport();
           alert('Database imported successfully.');
@@ -64,9 +66,24 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
         
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/50">
-          <div className="flex items-center space-x-2 text-indigo-400">
-            <Clock className="w-5 h-5" />
-            <h2 className="font-semibold text-white">History Database</h2>
+          <div className="flex flex-col">
+            <div className="flex items-center space-x-2 text-indigo-400">
+              <Clock className="w-5 h-5" />
+              <h2 className="font-semibold text-white">History</h2>
+            </div>
+            <div className="flex items-center mt-1 ml-7 space-x-1.5">
+              {storageType === 'SUPABASE' ? (
+                <>
+                  <Cloud className="w-3 h-3 text-emerald-400" />
+                  <span className="text-[10px] text-emerald-400 font-medium tracking-wide">CLOUD SYNCED</span>
+                </>
+              ) : (
+                <>
+                  <HardDrive className="w-3 h-3 text-amber-400" />
+                  <span className="text-[10px] text-amber-400 font-medium tracking-wide">LOCAL STORAGE</span>
+                </>
+              )}
+            </div>
           </div>
           <button 
             onClick={onClose}
@@ -150,9 +167,15 @@ export const HistorySidebar: React.FC<HistorySidebarProps> = ({
           {history.length > 0 && (
             <Button 
               variant="ghost" 
-              onClick={() => {
+              isLoading={isClearing}
+              onClick={async () => {
                 if (window.confirm('Are you sure you want to delete all history permanently?')) {
-                  onClear();
+                  setIsClearing(true);
+                  try {
+                    await onClear();
+                  } finally {
+                    setIsClearing(false);
+                  }
                 }
               }}
               className="w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 h-9 text-xs"

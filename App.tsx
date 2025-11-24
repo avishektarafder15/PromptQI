@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Wand2, AlertCircle, Terminal, Thermometer, MessageSquare, History as HistoryIcon } from 'lucide-react';
+import { Wand2, AlertCircle, Terminal, Thermometer, MessageSquare, History as HistoryIcon, Cloud, HardDrive, Check } from 'lucide-react';
 import { enhancePrompt } from './services/geminiService';
-import { getHistory, saveHistoryItem, clearHistory } from './services/historyService';
+import { getHistory, saveHistoryItem, clearHistory, getStorageType } from './services/historyService';
 import { AppState, EnhancementResponse, ToneType, HistoryItem } from './types';
 import { Button } from './components/Button';
 import { ResultSection } from './components/ResultSection';
@@ -18,10 +18,16 @@ function App() {
   // History State
   const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [storageType, setStorageType] = useState<'SUPABASE' | 'LOCAL'>('LOCAL');
 
   // Load history on mount
   useEffect(() => {
-    setHistory(getHistory());
+    const loadData = async () => {
+      const data = await getHistory();
+      setHistory(data);
+      setStorageType(getStorageType());
+    };
+    loadData();
   }, []);
 
   const tones: ToneType[] = ['Professional', 'Casual', 'Polite', 'Emojify'];
@@ -37,7 +43,7 @@ function App() {
       setResult(data);
       setAppState(AppState.COMPLETE);
 
-      // Save to History
+      // Save to History (Async)
       const newItem: HistoryItem = {
         id: crypto.randomUUID(),
         original: promptInput,
@@ -46,7 +52,8 @@ function App() {
         tone: tone
       };
       
-      const updatedHistory = saveHistoryItem(newItem);
+      // Optimistic update or wait for save
+      const updatedHistory = await saveHistoryItem(newItem);
       setHistory(updatedHistory);
 
     } catch (err) {
@@ -69,13 +76,19 @@ function App() {
     setShowHistory(false);
   };
 
-  const handleClearHistory = () => {
-    clearHistory();
-    setHistory([]);
+  const handleClearHistory = async () => {
+    try {
+      await clearHistory();
+      setHistory([]);
+    } catch (e) {
+      console.error("Failed to clear history:", e);
+      alert("Failed to clear history from cloud storage. Please check your internet connection.");
+    }
   };
 
-  const handleImportHistory = () => {
-    setHistory(getHistory());
+  const handleImportHistory = async () => {
+    const data = await getHistory();
+    setHistory(data);
   };
 
   return (
@@ -91,12 +104,31 @@ function App() {
             <span className="font-bold text-xl tracking-tight text-white">PromptQI</span>
           </div>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-slate-500 font-medium hidden sm:block">
-              Powered by Gemini 2.5
+            
+            {/* Connection Status Badge */}
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${
+              storageType === 'SUPABASE' 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            }`}>
+              {storageType === 'SUPABASE' ? (
+                <>
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Cloud Synced</span>
+                </>
+              ) : (
+                <>
+                  <HardDrive className="w-3.5 h-3.5" />
+                  <span>Local Only</span>
+                </>
+              )}
             </div>
+
+            <div className="h-6 w-px bg-slate-800 hidden sm:block"></div>
+
             <button 
               onClick={() => setShowHistory(true)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors relative"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors relative group"
               title="View History"
             >
               <HistoryIcon className="w-5 h-5" />
