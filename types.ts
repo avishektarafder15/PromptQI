@@ -15,8 +15,9 @@ export enum AppState {
 export interface HistoryItem {
   id: string;
   original: string;
-  enhanced: string;
+  result: EnhancementResponse;
   timestamp: number;
+  tone: ToneType;
 }
 
 export type ToneType = 'Professional' | 'Casual' | 'Polite' | 'Emojify';

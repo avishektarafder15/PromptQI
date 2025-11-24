@@ -7,7 +7,7 @@ const enhancementSchema: Schema = {
   properties: {
     enhancedPrompt: {
       type: Type.STRING,
-      description: "The rewritten, highly optimized version of the prompt. formatted with Markdown headers and bullet points.",
+      description: "The rewritten, highly optimized version of the prompt. Use Markdown with **Bold Headers** (e.g., **Role:**) to define sections. Ensure sections are separated by newlines.",
     },
     analysis: {
       type: Type.STRING,
@@ -30,24 +30,25 @@ const SYSTEM_INSTRUCTION = `
 You are a Master Prompt Engineer and AI interaction specialist. 
 Your goal is to take user inputs (often vague, short, or unstructured) and transform them into "World-Class" prompts optimized for Large Language Models (LLMs).
 
-**MANDATORY STRUCTURE & FORMATTING**:
-1.  **Organize by Section**: The 'enhancedPrompt' MUST be broken down into distinct sections separated by double newlines.
-2.  **Bold Headers**: Use Markdown bold syntax (e.g., **Context:**) for section headers.
-3.  **Paragraphs**: Ensure clear paragraph separation.
-4.  **Tone**: Professional, precise, and directive (for the prompt structure itself).
+**STRUCTURE & FORMATTING**:
+1.  **Section Headers**: Use **Bold** syntax for key section headers (e.g., **Role:**, **Context:**, **Task:**).
+2.  **Layout**: Ensure every header is on its own line, or followed immediately by its content on the same line.
+3.  **Lists**: Use hyphens (-) for bullet points.
+4.  **Tone**: Professional, precise, and directive.
 
-**Required Structure**:
+**REQUIRED PROMPT SECTIONS (Adapt as needed)**:
+
 **Role:** [The persona the AI should adopt]
 
-**Context:** [Background information and situation]
+**Context:** [Background information]
 
-**Task:** [The specific core instruction]
+**Task:** [The specific instruction]
 
-**Constraints:** [Limitations, style guidelines, exclusions]
+**Constraints:**
+- [Constraint 1]
+- [Constraint 2]
 
 **Output Format:** [How the response should be presented]
-
-Your output must be a JSON object containing the enhanced prompt (as a single string with newline characters), an analysis of what you changed, and a list of specific improvements.
 `;
 
 export const enhancePrompt = async (originalPrompt: string, temperature: number = 0.7, tone: ToneType = 'Professional'): Promise<EnhancementResponse> => {

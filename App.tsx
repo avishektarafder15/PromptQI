@@ -1,9 +1,11 @@
-import React, { useState, useCallback } from 'react';
-import { Wand2, AlertCircle, Terminal, Thermometer, MessageSquare } from 'lucide-react';
+import React, { useState, useCallback, useEffect } from 'react';
+import { Wand2, AlertCircle, Terminal, Thermometer, MessageSquare, History as HistoryIcon } from 'lucide-react';
 import { enhancePrompt } from './services/geminiService';
-import { AppState, EnhancementResponse, ToneType } from './types';
+import { getHistory, saveHistoryItem, clearHistory } from './services/historyService';
+import { AppState, EnhancementResponse, ToneType, HistoryItem } from './types';
 import { Button } from './components/Button';
 import { ResultSection } from './components/ResultSection';
+import { HistorySidebar } from './components/HistorySidebar';
 
 function App() {
   const [promptInput, setPromptInput] = useState('');
@@ -12,6 +14,15 @@ function App() {
   const [appState, setAppState] = useState<AppState>(AppState.IDLE);
   const [result, setResult] = useState<EnhancementResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // History State
+  const [showHistory, setShowHistory] = useState(false);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+
+  // Load history on mount
+  useEffect(() => {
+    setHistory(getHistory());
+  }, []);
 
   const tones: ToneType[] = ['Professional', 'Casual', 'Polite', 'Emojify'];
 
@@ -25,6 +36,19 @@ function App() {
       const data = await enhancePrompt(promptInput, temperature, tone);
       setResult(data);
       setAppState(AppState.COMPLETE);
+
+      // Save to History
+      const newItem: HistoryItem = {
+        id: crypto.randomUUID(),
+        original: promptInput,
+        result: data,
+        timestamp: Date.now(),
+        tone: tone
+      };
+      
+      const updatedHistory = saveHistoryItem(newItem);
+      setHistory(updatedHistory);
+
     } catch (err) {
       setAppState(AppState.ERROR);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -37,23 +61,62 @@ function App() {
     setPromptInput('');
   };
 
+  const handleHistorySelect = (item: HistoryItem) => {
+    setPromptInput(item.original);
+    setResult(item.result);
+    setTone(item.tone);
+    setAppState(AppState.COMPLETE);
+    setShowHistory(false);
+  };
+
+  const handleClearHistory = () => {
+    clearHistory();
+    setHistory([]);
+  };
+
+  const handleImportHistory = () => {
+    setHistory(getHistory());
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 text-slate-200 selection:bg-indigo-500/30">
       
       {/* Navbar */}
-      <nav className="border-b border-slate-800/60 bg-slate-950/50 backdrop-blur-md sticky top-0 z-50">
+      <nav className="border-b border-slate-800/60 bg-slate-950/50 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 cursor-pointer" onClick={handleReset}>
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <Wand2 className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-xl tracking-tight text-white">PromptQI</span>
           </div>
-          <div className="text-sm text-slate-500 font-medium hidden sm:block">
-            Powered by Gemini 2.5
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-slate-500 font-medium hidden sm:block">
+              Powered by Gemini 2.5
+            </div>
+            <button 
+              onClick={() => setShowHistory(true)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors relative"
+              title="View History"
+            >
+              <HistoryIcon className="w-5 h-5" />
+              {history.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-indigo-500 rounded-full ring-2 ring-slate-950"></span>
+              )}
+            </button>
           </div>
         </div>
       </nav>
+
+      {/* History Sidebar */}
+      <HistorySidebar 
+        isOpen={showHistory} 
+        onClose={() => setShowHistory(false)} 
+        history={history}
+        onSelect={handleHistorySelect}
+        onClear={handleClearHistory}
+        onImport={handleImportHistory}
+      />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
@@ -76,7 +139,8 @@ function App() {
               <div className="absolute -inset-0.5 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl blur opacity-30 group-hover:opacity-50 transition duration-500"></div>
               <div className="relative bg-slate-900 rounded-xl border border-slate-800 p-1 shadow-2xl">
                 <div className="relative">
-                   <div className="absolute top-3 left-3 text-slate-500">
+                   {/* Icon aligned with first line of text (approx 18px from top for optical centering) */}
+                   <div className="absolute top-4 mt-0.5 left-3 text-slate-500">
                      <Terminal className="w-5 h-5" />
                    </div>
                   <textarea
@@ -188,7 +252,7 @@ function App() {
               </Button>
             </div>
 
-            {/* Features Grid (Only visible in initial state) */}
+            {/* Features Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-12 border-t border-slate-800/50">
               {[
                 { title: "Context Injection", desc: "Automatically adds necessary context and personas." },
@@ -204,7 +268,6 @@ function App() {
 
           </div>
         ) : (
-          /* Result View */
           result && <ResultSection data={result} onReset={handleReset} />
         )}
       </main>
