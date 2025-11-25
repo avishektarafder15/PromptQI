@@ -20,4 +20,4 @@ export interface HistoryItem {
   tone: ToneType;
 }
 
-export type ToneType = 'Professional' | 'Casual' | 'Mentor' | 'Emojify';
+export type ToneType = 'Professional' | 'Casual' | 'Polite' | 'Emojify';

@@ -58,24 +58,13 @@ export const enhancePrompt = async (originalPrompt: string, temperature: number 
 
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  let toneInstruction = `CRITICAL INSTRUCTION: The enhanced prompt must explicitly instruct the target LLM to adopt a "${tone}" tone.`;
-  
-  if (tone === 'Mentor') {
-    toneInstruction += `\nFor the "Mentor" tone, ensure the output is:
-1. Supportive
-2. Slightly authoritative
-3. Educational
-4. Provides reasoning or tips
-5. Encourages improvement.`;
-  }
-
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",
-          parts: [{ text: `Enhance this prompt: "${originalPrompt}"\n\n${toneInstruction}` }],
+          parts: [{ text: `Enhance this prompt: "${originalPrompt}"\n\nCRITICAL INSTRUCTION: The enhanced prompt must explicitly instruct the target LLM to adopt a "${tone}" tone.` }],
         },
       ],
       config: {

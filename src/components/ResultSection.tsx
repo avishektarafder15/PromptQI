@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { EnhancementResponse } from '../types';
 import { Copy, Check, Sparkles, Zap, BarChart3, ArrowRight } from 'lucide-react';
 import { Button } from './Button';
@@ -44,77 +44,64 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ data, onReset }) =
     });
   };
 
-  // Parse the prompt into structured sections for perfect alignment
-  const structuredPrompt = useMemo(() => {
-    const lines = data.enhancedPrompt.split('\n');
-    const sections: { title: string; content: string[] }[] = [];
-    let currentSection: { title: string; content: string[] } = { title: '', content: [] };
-
-    lines.forEach((line) => {
+  // Advanced parser for the prompt structure to ensure perfect alignment
+  const renderFormattedText = (text: string) => {
+    const lines = text.split('\n');
+    
+    return lines.map((line, index) => {
       const trimmed = line.trim();
-      
-      // Match headers like "**Role:**" or "### Role"
-      // Exclude bullet points that might start with bolding like "- **Note**:"
-      const headerMatch = trimmed.match(/^(\*\*.*?\*\*|#{1,6}\s+.*?)(:)?\s*(.*)$/);
-      const isBullet = trimmed.startsWith('-') || trimmed.startsWith('* ');
+      if (!trimmed) return <div key={index} className="h-3" />; // Spacing between blocks
 
-      if (headerMatch && !isBullet) {
-        // Push previous section if it has content
-        if (currentSection.title || currentSection.content.length > 0) {
-          sections.push(currentSection);
-        }
+      // Check for Section Headers
+      // 1. Bold headers: **Role:** Content or **Role** Content
+      // 2. Markdown headers: ### Role or ### Role:
+      const boldHeaderMatch = trimmed.match(/^(\*\*.*?\*\*):?\s*(.*)$/);
+      const hashHeaderMatch = trimmed.match(/^(#{1,6})\s+(.*?)(:)?\s*$/);
 
-        let rawTitle = headerMatch[1];
-        const restOfLine = headerMatch[3];
-
-        // Clean up title: remove markdown bold/hash and trailing colon
-        let cleanTitle = rawTitle.replace(/\*\*/g, '').replace(/#{1,6}\s+/, '').trim();
-        if (cleanTitle.endsWith(':')) cleanTitle = cleanTitle.slice(0, -1).trim();
-
-        currentSection = {
-          title: cleanTitle,
-          content: restOfLine ? [restOfLine] : []
-        };
-      } else {
-        // Add line to current section
-        // If it's a completely empty line and we are inside a section, keep it for spacing, 
-        // but if it's start of prompt, ignore.
-        if (trimmed || currentSection.content.length > 0) {
-             currentSection.content.push(line);
-        }
+      if (boldHeaderMatch) {
+        const header = boldHeaderMatch[1].replace(/\*\*/g, ''); // Remove **
+        const content = boldHeaderMatch[2];
+        return renderSection(index, header, content);
       }
-    });
+      
+      if (hashHeaderMatch) {
+        const header = hashHeaderMatch[2];
+        return renderSection(index, header, '');
+      }
 
-    // Push final section
-    if (currentSection.title || currentSection.content.length > 0) {
-      sections.push(currentSection);
-    }
-
-    return sections;
-  }, [data.enhancedPrompt]);
-
-  const renderContentLine = (line: string, index: number) => {
-     const trimmed = line.trim();
-     if (!trimmed) return <div key={index} className="h-2" />;
-
-     // Check for bullet points
+      // Check for bullet points
       if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
         return (
-          <div key={index} className="flex items-start mb-1">
-            <span className="text-indigo-500/50 mr-2 mt-2 text-[6px] shrink-0">●</span>
+          <div key={index} className="flex items-start pl-0 sm:pl-[9rem] mb-1">
+            <span className="text-indigo-500/50 mr-3 mt-2 text-[6px] shrink-0">●</span>
             <span className="text-slate-300 text-sm leading-relaxed">
               {parseInline(trimmed.replace(/^[\-\*]\s+/, ''))}
             </span>
           </div>
         );
       }
-
+      
+      // Regular paragraph text (continuation) - indented to align with content column
       return (
-        <div key={index} className="text-slate-300 text-sm leading-relaxed mb-1">
+        <div key={index} className="pl-0 sm:pl-[9rem] mb-2 text-slate-300 text-sm leading-relaxed">
           {parseInline(trimmed)}
         </div>
       );
+    });
   };
+
+  const renderSection = (index: number, header: string, content: string) => (
+    <div key={index} className="mb-2 group">
+      <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
+        <span className="text-indigo-400 font-bold uppercase text-xs tracking-wider mt-1 sm:w-32 sm:shrink-0 sm:text-right select-none">
+          {header}
+        </span>
+        <div className="flex-1 text-slate-200 leading-relaxed">
+          {content ? parseInline(content) : null}
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-fade-in-up">
@@ -145,24 +132,8 @@ export const ResultSection: React.FC<ResultSectionProps> = ({ data, onReset }) =
           </div>
           
           <div className="bg-slate-950 rounded-xl p-6 border border-slate-800/50 overflow-hidden">
-            <div className="font-mono text-sm space-y-4">
-              {structuredPrompt.map((section, idx) => (
-                <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:gap-6">
-                  {/* Left Column: Title */}
-                  <div className="sm:w-32 shrink-0">
-                    {section.title && (
-                      <span className="text-indigo-400 font-bold uppercase text-xs tracking-wider block sm:text-right pt-0.5">
-                        {section.title}
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Right Column: Content */}
-                  <div className="flex-1 min-w-0">
-                    {section.content.map((line, lineIdx) => renderContentLine(line, lineIdx))}
-                  </div>
-                </div>
-              ))}
+            <div className="font-mono text-sm">
+              {renderFormattedText(data.enhancedPrompt)}
             </div>
           </div>
 

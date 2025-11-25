@@ -93,28 +93,22 @@ export const saveHistoryItem = async (item: HistoryItem): Promise<HistoryItem[]>
 };
 
 export const clearHistory = async (): Promise<void> => {
-  // 1. Always clear LocalStorage first. 
-  // This guarantees the UI can reflect an empty state immediately, even if the network fails.
+  // 1. Try Supabase
+  if (isSupabaseConfigured() && supabase) {
+    // We allow this to throw so the UI knows it failed
+    const { error } = await supabase
+      .from('history')
+      .delete()
+      .gt('timestamp', 0); // Delete all rows where timestamp > 0 (effectively all)
+    
+    if (error) throw error;
+  }
+
+  // 2. Clear LocalStorage regardless (good cleanup)
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch (e) {
     console.error("Failed to clear local history", e);
-  }
-
-  // 2. Try Supabase if configured
-  if (isSupabaseConfigured() && supabase) {
-    // Attempt to delete all rows by checking timestamp > 0
-    const { error } = await supabase
-      .from('history')
-      .delete()
-      .gt('timestamp', 0);
-    
-    if (error) {
-      console.error("Supabase clear failed:", error);
-      // We throw here so the UI knows there was a partial failure, 
-      // but the local data is already gone.
-      throw error;
-    }
   }
 };
 

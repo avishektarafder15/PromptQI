@@ -30,7 +30,7 @@ function App() {
     loadData();
   }, []);
 
-  const tones: ToneType[] = ['Professional', 'Casual', 'Mentor', 'Emojify'];
+  const tones: ToneType[] = ['Professional', 'Casual', 'Polite', 'Emojify'];
 
   const handleEnhance = useCallback(async () => {
     if (!promptInput.trim()) return;
