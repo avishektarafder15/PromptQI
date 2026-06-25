@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: promptqi
+    env: static
+    buildCommand: npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: GEMINI_API_KEY
+        scope: build
+        sync: false

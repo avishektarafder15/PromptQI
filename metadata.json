@@ -1,0 +1,5 @@
+{
+  "name": "PromptQI",
+  "description": "An intelligent prompt enhancement tool that uses Gemini to transform vague ideas into structured, high-performance LLM prompts.",
+  "requestFramePermissions": []
+}
